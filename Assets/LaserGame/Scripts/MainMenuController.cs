@@ -21,7 +21,7 @@ public class MainMenuController : MonoBehaviour
 
     public SettingsPopup settingsPopup;
 
-    public string gameSceneName = "Game";
+    public string nextSceneName = "LevelSelect";
 
     private Vector2 _titleTarget;
     private Vector2 _playTarget;
@@ -111,11 +111,11 @@ public class MainMenuController : MonoBehaviour
     {
         if (SceneTransitionManager.Instance != null)
         {
-            SceneTransitionManager.Instance.LoadScene(gameSceneName);
+            SceneTransitionManager.Instance.LoadScene(nextSceneName);
         }
         else
         {
-            UnityEngine.SceneManagement.SceneManager.LoadScene(gameSceneName);
+            UnityEngine.SceneManagement.SceneManager.LoadScene(nextSceneName);
         }
     }
 

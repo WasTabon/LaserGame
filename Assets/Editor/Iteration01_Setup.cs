@@ -222,7 +222,7 @@ public static class Iteration01_Setup
         controller.playButton = playBtn.GetComponent<Button>();
         controller.settingsButton = settingsBtn.GetComponent<Button>();
         controller.settingsPopup = settingsPopupGo.GetComponent<SettingsPopup>();
-        controller.gameSceneName = "Game";
+        controller.nextSceneName = "LevelSelect";
     }
 
     private static GameObject BuildSettingsPopup(RectTransform parent)
