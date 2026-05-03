@@ -6,6 +6,12 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
-    path: Assets/Scenes/SampleScene.unity
+    path: Assets/LaserGame/Scenes/SampleScene.unity
     guid: 2cda990e2423bbf4892e6590ba056729
+  - enabled: 1
+    path: Assets/LaserGame/Scenes/Game.unity
+    guid: 1d409022ca54cdb478779f00ec69cf56
+  - enabled: 1
+    path: Assets/LaserGame/Scenes/MainMenu.unity
+    guid: 3cff23dfac99eee4cb7e8829fc5b4dc9
   m_configObjects: {}
