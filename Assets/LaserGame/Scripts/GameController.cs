@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using DG.Tweening;
 using TMPro;
 using UnityEngine;
@@ -22,17 +23,16 @@ public class GameController : MonoBehaviour
     public GridSystem grid;
     public LaserEmitter emitter;
     public RayRenderer rayRenderer;
+    public RectTransform elementsHolder;
+    public MirrorElement mirrorTemplate;
 
     [Header("Bottom")]
     public Button resetButton;
     public RectTransform resetRect;
     public CanvasGroup resetGroup;
 
-    [Header("Default Level Config")]
-    public int defaultRows = 5;
-    public int defaultCols = 5;
-    public Vector2Int defaultEmitterCell = new Vector2Int(0, 2);
-    public Vector2Int defaultEmitterDir = new Vector2Int(1, 0);
+    [Header("Test Level")]
+    public LevelDefinition testLevel = new LevelDefinition();
 
     [Header("Scenes")]
     public string levelSelectSceneName = "LevelSelect";
@@ -41,6 +41,7 @@ public class GameController : MonoBehaviour
     private Vector2 _topHudTarget;
     private Vector2 _subHudTarget;
     private Vector2 _resetTarget;
+    private List<MirrorElement> _activeMirrors = new List<MirrorElement>();
 
     private void OnEnable()
     {
@@ -60,13 +61,19 @@ public class GameController : MonoBehaviour
     {
         if (backButton != null) backButton.onClick.RemoveListener(OnBackClicked);
         if (resetButton != null) resetButton.onClick.RemoveListener(OnResetClicked);
+
+        for (int i = 0; i < _activeMirrors.Count; i++)
+        {
+            if (_activeMirrors[i] != null)
+                _activeMirrors[i].OnRotated -= HandleMirrorRotated;
+        }
     }
 
     private void Start()
     {
         UpdateCoins();
         UpdateLevelText();
-        BuildLevel();
+        ApplyLevelDefinition(testLevel);
         UpdateMoves(0);
         AnimateIn();
         RecalculateRay();
@@ -90,23 +97,76 @@ public class GameController : MonoBehaviour
         if (movesText != null) movesText.text = "MOVES: " + _moves;
     }
 
-    private void BuildLevel()
+    public void ApplyLevelDefinition(LevelDefinition def)
     {
         Debug.Assert(grid != null, "GameController: grid is null");
         Debug.Assert(emitter != null, "GameController: emitter is null");
+        Debug.Assert(def != null, "GameController: level definition is null");
 
-        grid.Build(defaultCols, defaultRows);
-
-        emitter.cell = defaultEmitterCell;
-        emitter.direction = defaultEmitterDir;
+        grid.Build(def.cols, def.rows);
+        emitter.cell = def.emitterCell;
+        emitter.direction = def.emitterDir;
         emitter.PlaceOnGrid(grid);
+
+        ClearMirrors();
+        SpawnMirrors(def.mirrors);
+    }
+
+    private void ClearMirrors()
+    {
+        for (int i = 0; i < _activeMirrors.Count; i++)
+        {
+            var m = _activeMirrors[i];
+            if (m == null) continue;
+            m.OnRotated -= HandleMirrorRotated;
+            if (Application.isPlaying) Destroy(m.gameObject);
+            else DestroyImmediate(m.gameObject);
+        }
+        _activeMirrors.Clear();
+
+        if (elementsHolder != null)
+        {
+            for (int i = elementsHolder.childCount - 1; i >= 0; i--)
+            {
+                var child = elementsHolder.GetChild(i);
+                if (Application.isPlaying) Destroy(child.gameObject);
+                else DestroyImmediate(child.gameObject);
+            }
+        }
+    }
+
+    private void SpawnMirrors(List<MirrorPlacement> placements)
+    {
+        if (placements == null || placements.Count == 0) return;
+        if (mirrorTemplate == null) { Debug.LogWarning("GameController: mirrorTemplate is null"); return; }
+        if (elementsHolder == null) { Debug.LogWarning("GameController: elementsHolder is null"); return; }
+
+        for (int i = 0; i < placements.Count; i++)
+        {
+            var p = placements[i];
+            var go = Instantiate(mirrorTemplate.gameObject, elementsHolder);
+            go.name = "Mirror_" + p.cell.x + "_" + p.cell.y;
+            go.SetActive(true);
+            var m = go.GetComponent<MirrorElement>();
+            m.cell = p.cell;
+            m.rotationStep = p.initialRotationStep;
+            m.PlaceOnGrid(grid);
+            m.OnRotated += HandleMirrorRotated;
+            _activeMirrors.Add(m);
+        }
     }
 
     public void RecalculateRay()
     {
         if (rayRenderer == null || grid == null || emitter == null) return;
-        var segments = RayCalculator.Calculate(grid, emitter);
+        var segments = RayCalculator.Calculate(grid, emitter, _activeMirrors);
         rayRenderer.Render(segments, grid.CellSize);
+    }
+
+    private void HandleMirrorRotated(MirrorElement m)
+    {
+        UpdateMoves(_moves + 1);
+        RecalculateRay();
     }
 
     private void OnBackClicked()
@@ -119,9 +179,13 @@ public class GameController : MonoBehaviour
 
     private void OnResetClicked()
     {
-        emitter.cell = defaultEmitterCell;
-        emitter.direction = defaultEmitterDir;
-        emitter.PlaceOnGrid(grid);
+        for (int i = 0; i < _activeMirrors.Count && i < testLevel.mirrors.Count; i++)
+        {
+            if (_activeMirrors[i] != null)
+            {
+                _activeMirrors[i].ResetRotation(testLevel.mirrors[i].initialRotationStep);
+            }
+        }
 
         UpdateMoves(0);
         RecalculateRay();

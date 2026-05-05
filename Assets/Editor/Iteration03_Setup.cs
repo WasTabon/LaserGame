@@ -62,7 +62,7 @@ public static class Iteration03_Setup
         var ctrl = Object.FindObjectOfType<GameController>();
         if (ctrl == null) { Debug.LogWarning("GameController not found."); return; }
 
-        Vector2Int d = ctrl.defaultEmitterDir;
+        Vector2Int d = ctrl.testLevel.emitterDir;
         Vector2Int next;
         if (d == new Vector2Int(1, 0)) next = new Vector2Int(0, 1);
         else if (d == new Vector2Int(0, 1)) next = new Vector2Int(-1, 0);
@@ -70,13 +70,13 @@ public static class Iteration03_Setup
         else next = new Vector2Int(1, 0);
 
         Vector2Int cell;
-        if (next == new Vector2Int(1, 0)) cell = new Vector2Int(0, ctrl.defaultRows / 2);
-        else if (next == new Vector2Int(-1, 0)) cell = new Vector2Int(ctrl.defaultCols - 1, ctrl.defaultRows / 2);
-        else if (next == new Vector2Int(0, 1)) cell = new Vector2Int(ctrl.defaultCols / 2, 0);
-        else cell = new Vector2Int(ctrl.defaultCols / 2, ctrl.defaultRows - 1);
+        if (next == new Vector2Int(1, 0)) cell = new Vector2Int(0, ctrl.testLevel.rows / 2);
+        else if (next == new Vector2Int(-1, 0)) cell = new Vector2Int(ctrl.testLevel.cols - 1, ctrl.testLevel.rows / 2);
+        else if (next == new Vector2Int(0, 1)) cell = new Vector2Int(ctrl.testLevel.cols / 2, 0);
+        else cell = new Vector2Int(ctrl.testLevel.cols / 2, ctrl.testLevel.rows - 1);
 
-        ctrl.defaultEmitterDir = next;
-        ctrl.defaultEmitterCell = cell;
+        ctrl.testLevel.emitterDir = next;
+        ctrl.testLevel.emitterCell = cell;
 
         ApplyConfigToScene(ctrl);
 
@@ -93,10 +93,14 @@ public static class Iteration03_Setup
         var ctrl = Object.FindObjectOfType<GameController>();
         if (ctrl == null) { Debug.LogWarning("GameController not found."); return; }
 
-        ctrl.defaultCols = cols;
-        ctrl.defaultRows = rows;
-        ctrl.defaultEmitterCell = emitterCell;
-        ctrl.defaultEmitterDir = emitterDir;
+        ctrl.testLevel = new LevelDefinition
+        {
+            cols = cols,
+            rows = rows,
+            emitterCell = emitterCell,
+            emitterDir = emitterDir,
+            mirrors = new System.Collections.Generic.List<MirrorPlacement>()
+        };
 
         ApplyConfigToScene(ctrl);
 
@@ -110,14 +114,14 @@ public static class Iteration03_Setup
     {
         if (ctrl.grid != null)
         {
-            ctrl.grid.cols = ctrl.defaultCols;
-            ctrl.grid.rows = ctrl.defaultRows;
+            ctrl.grid.cols = ctrl.testLevel.cols;
+            ctrl.grid.rows = ctrl.testLevel.rows;
             ctrl.grid.Build();
         }
         if (ctrl.emitter != null && ctrl.grid != null)
         {
-            ctrl.emitter.cell = ctrl.defaultEmitterCell;
-            ctrl.emitter.direction = ctrl.defaultEmitterDir;
+            ctrl.emitter.cell = ctrl.testLevel.emitterCell;
+            ctrl.emitter.direction = ctrl.testLevel.emitterDir;
             ctrl.emitter.PlaceOnGrid(ctrl.grid);
         }
     }
@@ -194,10 +198,14 @@ public static class Iteration03_Setup
         ctrl.resetRect = resetBtn.GetComponent<RectTransform>();
         ctrl.resetGroup = resetBtn.GetComponent<CanvasGroup>();
 
-        ctrl.defaultRows = 5;
-        ctrl.defaultCols = 5;
-        ctrl.defaultEmitterCell = new Vector2Int(0, 2);
-        ctrl.defaultEmitterDir = new Vector2Int(1, 0);
+        ctrl.testLevel = new LevelDefinition
+        {
+            cols = 5,
+            rows = 5,
+            emitterCell = new Vector2Int(0, 2),
+            emitterDir = new Vector2Int(1, 0),
+            mirrors = new System.Collections.Generic.List<MirrorPlacement>()
+        };
         ctrl.levelSelectSceneName = "LevelSelect";
 
         ApplyConfigToScene(ctrl);
