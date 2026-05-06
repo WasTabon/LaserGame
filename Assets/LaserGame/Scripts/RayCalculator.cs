@@ -7,14 +7,24 @@ public struct RaySegment
     public Vector2 toLocal;
 }
 
+public struct RayResult
+{
+    public List<RaySegment> segments;
+    public HashSet<Vector2Int> visitedCells;
+}
+
 public static class RayCalculator
 {
     private const int MaxBounces = 64;
 
-    public static List<RaySegment> Calculate(GridSystem grid, LaserEmitter emitter, List<MirrorElement> mirrors)
+    public static RayResult Calculate(GridSystem grid, LaserEmitter emitter, List<MirrorElement> mirrors)
     {
-        var segments = new List<RaySegment>();
-        if (grid == null || emitter == null) return segments;
+        var result = new RayResult
+        {
+            segments = new List<RaySegment>(),
+            visitedCells = new HashSet<Vector2Int>()
+        };
+        if (grid == null || emitter == null) return result;
 
         var mirrorMap = new Dictionary<Vector2Int, MirrorElement>();
         if (mirrors != null)
@@ -29,6 +39,7 @@ public static class RayCalculator
         Vector2Int curCell = emitter.cell;
         Vector2Int dir = emitter.direction;
         Vector2 segmentStart = emitter.GetExitLocalPos(grid);
+        result.visitedCells.Add(curCell);
 
         int safety = MaxBounces;
         while (safety-- > 0)
@@ -38,14 +49,16 @@ public static class RayCalculator
             if (!grid.IsInBounds(next))
             {
                 Vector2 toLocal = grid.GetCellLocalPos(curCell) + new Vector2(dir.x, dir.y) * grid.CellSize * 0.5f;
-                segments.Add(new RaySegment { fromLocal = segmentStart, toLocal = toLocal });
+                result.segments.Add(new RaySegment { fromLocal = segmentStart, toLocal = toLocal });
                 break;
             }
+
+            result.visitedCells.Add(next);
 
             if (mirrorMap.TryGetValue(next, out var mirror))
             {
                 Vector2 mirrorCenter = grid.GetCellLocalPos(next);
-                segments.Add(new RaySegment { fromLocal = segmentStart, toLocal = mirrorCenter });
+                result.segments.Add(new RaySegment { fromLocal = segmentStart, toLocal = mirrorCenter });
 
                 dir = MirrorReflection.Reflect(dir, mirror.rotationStep);
                 curCell = next;
@@ -56,6 +69,6 @@ public static class RayCalculator
             curCell = next;
         }
 
-        return segments;
+        return result;
     }
 }

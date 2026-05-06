@@ -10,6 +10,9 @@ public class LevelDefinition
     public Vector2Int emitterCell = new Vector2Int(0, 2);
     public Vector2Int emitterDir = new Vector2Int(1, 0);
     public List<MirrorPlacement> mirrors = new List<MirrorPlacement>();
+    public List<Vector2Int> batteries = new List<Vector2Int>();
+    public List<Vector2Int> energyStars = new List<Vector2Int>();
+    public int maxMovesForThreeStars = 3;
 }
 
 [Serializable]

@@ -1,3 +1,4 @@
+using DG.Tweening;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -72,5 +73,29 @@ public class GridSystem : MonoBehaviour
     public bool IsInBounds(Vector2Int cell)
     {
         return cell.x >= 0 && cell.x < cols && cell.y >= 0 && cell.y < rows;
+    }
+
+    public void PlayWinPulse(Color flashColor)
+    {
+        if (cellsHolder == null) return;
+
+        float maxDist = Mathf.Sqrt((cols * cols + rows * rows)) * _cellSize * 0.5f;
+        if (maxDist <= 0.01f) maxDist = 1f;
+
+        for (int i = 0; i < cellsHolder.childCount; i++)
+        {
+            var child = cellsHolder.GetChild(i);
+            var img = child.GetComponent<Image>();
+            if (img == null) continue;
+            var rt = child.GetComponent<RectTransform>();
+            float dist = rt.anchoredPosition.magnitude;
+            float delay = (dist / maxDist) * 0.45f;
+            Color originalColor = cellColor;
+            img.DOKill();
+            Sequence s = DOTween.Sequence().SetUpdate(true);
+            s.AppendInterval(delay);
+            s.Append(img.DOColor(flashColor, 0.18f).SetEase(Ease.OutQuad));
+            s.Append(img.DOColor(originalColor, 0.7f).SetEase(Ease.InOutSine));
+        }
     }
 }
