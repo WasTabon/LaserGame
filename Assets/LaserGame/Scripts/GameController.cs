@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using DG.Tweening;
@@ -14,6 +15,7 @@ public class GameController : MonoBehaviour
     public Button backButton;
     public TextMeshProUGUI levelText;
     public TextMeshProUGUI coinsText;
+    public RectTransform coinsIconRect;
     public TextMeshProUGUI movesText;
     public CanvasGroup subHudGroup;
     public RectTransform subHudRect;
@@ -27,6 +29,8 @@ public class GameController : MonoBehaviour
     public RectTransform elementsHolder;
     public MirrorElement mirrorTemplate;
     public BatteryElement batteryTemplate;
+    public WallElement wallTemplate;
+    public EnergyStarElement energyStarTemplate;
 
     [Header("Bottom")]
     public Button resetButton;
@@ -37,6 +41,9 @@ public class GameController : MonoBehaviour
     public Image winFlashOverlay;
     public LevelCompletePopup levelCompletePopup;
 
+    [Header("Coin Fly")]
+    public RectTransform coinFlyHost;
+
     [Header("Test Level")]
     public LevelDefinition testLevel = new LevelDefinition();
 
@@ -44,14 +51,18 @@ public class GameController : MonoBehaviour
     public string levelSelectSceneName = "LevelSelect";
 
     public Color winFlashColor = new Color(0.2f, 0.95f, 1f, 1f);
+    public Color coinFlyColor = new Color(1f, 0.85f, 0.25f, 1f);
 
     private int _moves;
+    private int _displayedCoins;
     private bool _isWon;
     private Vector2 _topHudTarget;
     private Vector2 _subHudTarget;
     private Vector2 _resetTarget;
     private List<MirrorElement> _activeMirrors = new List<MirrorElement>();
     private List<BatteryElement> _activeBatteries = new List<BatteryElement>();
+    private List<WallElement> _activeWalls = new List<WallElement>();
+    private List<EnergyStarElement> _activeEnergyStars = new List<EnergyStarElement>();
 
     private void OnEnable()
     {
@@ -94,7 +105,8 @@ public class GameController : MonoBehaviour
 
     private void Start()
     {
-        UpdateCoins();
+        _displayedCoins = SaveSystem.Data.coins;
+        UpdateCoinsText(_displayedCoins);
         UpdateLevelText();
         ApplyLevelDefinition(testLevel);
         UpdateMoves(0);
@@ -105,9 +117,9 @@ public class GameController : MonoBehaviour
         if (emitter != null) emitter.PulseAppear();
     }
 
-    private void UpdateCoins()
+    private void UpdateCoinsText(int value)
     {
-        if (coinsText != null) coinsText.text = SaveSystem.Data.coins.ToString();
+        if (coinsText != null) coinsText.text = value.ToString();
     }
 
     private void UpdateLevelText()
@@ -130,41 +142,29 @@ public class GameController : MonoBehaviour
         if (def.mirrors == null) def.mirrors = new List<MirrorPlacement>();
         if (def.batteries == null) def.batteries = new List<Vector2Int>();
         if (def.energyStars == null) def.energyStars = new List<Vector2Int>();
+        if (def.walls == null) def.walls = new List<Vector2Int>();
 
         grid.Build(def.cols, def.rows);
         emitter.cell = def.emitterCell;
         emitter.direction = def.emitterDir;
         emitter.PlaceOnGrid(grid);
 
-        ClearMirrors();
-        ClearBatteries();
-        SpawnMirrors(def.mirrors);
+        ClearAllElements();
+        SpawnWalls(def.walls);
+        SpawnEnergyStars(def.energyStars);
         SpawnBatteries(def.batteries);
+        SpawnMirrors(def.mirrors);
     }
 
-    private void ClearMirrors()
+    private void ClearAllElements()
     {
-        for (int i = 0; i < _activeMirrors.Count; i++)
+        ClearList(_activeMirrors, m =>
         {
-            var m = _activeMirrors[i];
-            if (m == null) continue;
-            m.OnRotated -= HandleMirrorRotated;
-            if (Application.isPlaying) Destroy(m.gameObject);
-            else DestroyImmediate(m.gameObject);
-        }
-        _activeMirrors.Clear();
-    }
-
-    private void ClearBatteries()
-    {
-        for (int i = 0; i < _activeBatteries.Count; i++)
-        {
-            var b = _activeBatteries[i];
-            if (b == null) continue;
-            if (Application.isPlaying) Destroy(b.gameObject);
-            else DestroyImmediate(b.gameObject);
-        }
-        _activeBatteries.Clear();
+            if (m != null) m.OnRotated -= HandleMirrorRotated;
+        });
+        ClearList(_activeBatteries, null);
+        ClearList(_activeWalls, null);
+        ClearList(_activeEnergyStars, null);
 
         if (elementsHolder != null)
         {
@@ -175,6 +175,19 @@ public class GameController : MonoBehaviour
                 else DestroyImmediate(child.gameObject);
             }
         }
+    }
+
+    private void ClearList<T>(List<T> list, Action<T> onPreDestroy) where T : MonoBehaviour
+    {
+        for (int i = 0; i < list.Count; i++)
+        {
+            var item = list[i];
+            if (item == null) continue;
+            onPreDestroy?.Invoke(item);
+            if (Application.isPlaying) Destroy(item.gameObject);
+            else DestroyImmediate(item.gameObject);
+        }
+        list.Clear();
     }
 
     private void SpawnMirrors(List<MirrorPlacement> placements)
@@ -202,7 +215,7 @@ public class GameController : MonoBehaviour
     {
         if (placements == null || placements.Count == 0) return;
         if (batteryTemplate == null) { Debug.LogWarning("GameController: batteryTemplate is null"); return; }
-        if (elementsHolder == null) { Debug.LogWarning("GameController: elementsHolder is null"); return; }
+        if (elementsHolder == null) return;
 
         for (int i = 0; i < placements.Count; i++)
         {
@@ -217,14 +230,62 @@ public class GameController : MonoBehaviour
         }
     }
 
+    private void SpawnWalls(List<Vector2Int> placements)
+    {
+        if (placements == null || placements.Count == 0) return;
+        if (wallTemplate == null) { Debug.LogWarning("GameController: wallTemplate is null"); return; }
+        if (elementsHolder == null) return;
+
+        for (int i = 0; i < placements.Count; i++)
+        {
+            var go = Instantiate(wallTemplate.gameObject, elementsHolder);
+            go.name = "Wall_" + placements[i].x + "_" + placements[i].y;
+            go.SetActive(true);
+            var w = go.GetComponent<WallElement>();
+            w.cell = placements[i];
+            w.PlaceOnGrid(grid);
+            _activeWalls.Add(w);
+        }
+    }
+
+    private void SpawnEnergyStars(List<Vector2Int> placements)
+    {
+        if (placements == null || placements.Count == 0) return;
+        if (energyStarTemplate == null) { Debug.LogWarning("GameController: energyStarTemplate is null"); return; }
+        if (elementsHolder == null) return;
+
+        for (int i = 0; i < placements.Count; i++)
+        {
+            var go = Instantiate(energyStarTemplate.gameObject, elementsHolder);
+            go.name = "EnergyStar_" + placements[i].x + "_" + placements[i].y;
+            go.SetActive(true);
+            var s = go.GetComponent<EnergyStarElement>();
+            s.cell = placements[i];
+            s.PlaceOnGrid(grid);
+            s.SetCollectedImmediate(false);
+            _activeEnergyStars.Add(s);
+        }
+    }
+
     public void RecalculateRay()
     {
         if (rayRenderer == null || grid == null || emitter == null) return;
-        var result = RayCalculator.Calculate(grid, emitter, _activeMirrors);
+        var result = RayCalculator.Calculate(grid, emitter, _activeMirrors, GetWallCells());
         rayRenderer.Render(result.segments, grid.CellSize);
 
         UpdateBatteryStates(result.visitedCells);
+        UpdateEnergyStarStates(result.visitedCells);
         CheckWinCondition();
+    }
+
+    private List<Vector2Int> GetWallCells()
+    {
+        var list = new List<Vector2Int>(_activeWalls.Count);
+        for (int i = 0; i < _activeWalls.Count; i++)
+        {
+            if (_activeWalls[i] != null) list.Add(_activeWalls[i].cell);
+        }
+        return list;
     }
 
     private void UpdateBatteryStates(HashSet<Vector2Int> visited)
@@ -237,6 +298,97 @@ public class GameController : MonoBehaviour
             if (shouldBeCharged && !b.IsCharged) b.Charge();
             else if (!shouldBeCharged && b.IsCharged) b.Discharge();
         }
+    }
+
+    private void UpdateEnergyStarStates(HashSet<Vector2Int> visited)
+    {
+        for (int i = 0; i < _activeEnergyStars.Count; i++)
+        {
+            var s = _activeEnergyStars[i];
+            if (s == null || s.IsCollected) continue;
+            if (visited.Contains(s.cell))
+            {
+                CollectEnergyStar(s);
+            }
+        }
+    }
+
+    private void CollectEnergyStar(EnergyStarElement star)
+    {
+        Vector3 worldStart = star.rectTransform.position;
+        star.Collect();
+
+        const int rewardPerStar = 5;
+        int oldTotal = SaveSystem.Data.coins;
+        SaveSystem.Data.coins += rewardPerStar;
+        SaveSystem.Save();
+
+        PlayCoinFly(worldStart, oldTotal, SaveSystem.Data.coins);
+    }
+
+    private void PlayCoinFly(Vector3 worldStart, int displayStart, int displayEnd)
+    {
+        if (coinFlyHost == null || coinsIconRect == null) { UpdateCoinsText(displayEnd); return; }
+
+        Vector3 worldEnd = coinsIconRect.position;
+
+        var go = new GameObject("CoinFlyer", typeof(RectTransform), typeof(Image));
+        go.transform.SetParent(coinFlyHost, false);
+        var rt = go.GetComponent<RectTransform>();
+        rt.anchorMin = new Vector2(0.5f, 0.5f);
+        rt.anchorMax = new Vector2(0.5f, 0.5f);
+        rt.pivot = new Vector2(0.5f, 0.5f);
+        rt.sizeDelta = new Vector2(50, 50);
+        rt.position = worldStart;
+
+        var img = go.GetComponent<Image>();
+        img.color = coinFlyColor;
+        img.raycastTarget = false;
+
+        rt.localScale = Vector3.one * 0.4f;
+        Sequence s = DOTween.Sequence().SetUpdate(true);
+        s.Append(rt.DOScale(1.1f, 0.18f).SetEase(Ease.OutBack));
+        s.Append(rt.DOMove(worldEnd, 0.55f).SetEase(Ease.InOutQuad));
+        s.Join(rt.DOScale(0.55f, 0.55f).SetEase(Ease.InQuad));
+        s.OnComplete(() =>
+        {
+            UpdateCoinsText(displayEnd);
+            PunchCoinsIcon();
+            if (AudioManager.Instance != null) AudioManager.Instance.PlayButtonClick();
+            HapticManager.Trigger(HapticManager.HapticType.Light);
+            Destroy(go);
+        });
+
+        StartCoroutine(TickCounterDuringFly(displayStart, displayEnd, 0.7f));
+    }
+
+    private IEnumerator TickCounterDuringFly(int from, int to, float duration)
+    {
+        if (from == to) yield break;
+        int diff = to - from;
+        float t = 0f;
+        int prev = from;
+        while (t < duration)
+        {
+            t += Time.unscaledDeltaTime;
+            float k = Mathf.Clamp01(t / duration);
+            int current = from + Mathf.RoundToInt(diff * k);
+            if (current != prev)
+            {
+                UpdateCoinsText(current);
+                prev = current;
+            }
+            yield return null;
+        }
+        UpdateCoinsText(to);
+    }
+
+    private void PunchCoinsIcon()
+    {
+        if (coinsIconRect == null) return;
+        coinsIconRect.DOKill();
+        coinsIconRect.localScale = Vector3.one;
+        coinsIconRect.DOPunchScale(Vector3.one * 0.35f, 0.3f, 6, 0.6f);
     }
 
     private void CheckWinCondition()
@@ -270,22 +422,23 @@ public class GameController : MonoBehaviour
         yield return new WaitForSecondsRealtime(0.95f);
 
         int stars = CalculateStars();
-        int coinsReward = CalculateCoinReward(stars);
+        int winBonus = CalculateWinBonus(stars);
 
         SaveSystem.Data.SetStarsForLevel(GameSession.CurrentLevel, stars);
         if (GameSession.CurrentLevel >= SaveSystem.Data.unlockedLevel)
         {
             SaveSystem.Data.unlockedLevel = Mathf.Min(GameSession.CurrentLevel + 1, 30);
         }
-        SaveSystem.Data.coins += coinsReward;
+        SaveSystem.Data.coins += winBonus;
         SaveSystem.Save();
 
-        UpdateCoins();
+        UpdateCoinsText(SaveSystem.Data.coins);
+        _displayedCoins = SaveSystem.Data.coins;
 
         if (levelCompletePopup != null)
         {
             bool hasNext = GameSession.CurrentLevel < 30;
-            levelCompletePopup.Show(stars, coinsReward, hasNext);
+            levelCompletePopup.Show(stars, winBonus, hasNext);
         }
     }
 
@@ -299,11 +452,16 @@ public class GameController : MonoBehaviour
 
     private bool AllEnergyStarsCollected()
     {
-        if (testLevel.energyStars == null || testLevel.energyStars.Count == 0) return true;
-        return false;
+        if (_activeEnergyStars.Count == 0) return true;
+        for (int i = 0; i < _activeEnergyStars.Count; i++)
+        {
+            if (_activeEnergyStars[i] == null) continue;
+            if (!_activeEnergyStars[i].IsCollected) return false;
+        }
+        return true;
     }
 
-    private int CalculateCoinReward(int stars)
+    private int CalculateWinBonus(int stars)
     {
         return 10 + stars * 5;
     }

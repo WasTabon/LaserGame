@@ -12,6 +12,7 @@ public class LevelDefinition
     public List<MirrorPlacement> mirrors = new List<MirrorPlacement>();
     public List<Vector2Int> batteries = new List<Vector2Int>();
     public List<Vector2Int> energyStars = new List<Vector2Int>();
+    public List<Vector2Int> walls = new List<Vector2Int>();
     public int maxMovesForThreeStars = 3;
 }
 

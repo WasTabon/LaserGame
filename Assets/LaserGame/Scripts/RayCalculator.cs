@@ -17,7 +17,7 @@ public static class RayCalculator
 {
     private const int MaxBounces = 64;
 
-    public static RayResult Calculate(GridSystem grid, LaserEmitter emitter, List<MirrorElement> mirrors)
+    public static RayResult Calculate(GridSystem grid, LaserEmitter emitter, List<MirrorElement> mirrors, List<Vector2Int> walls)
     {
         var result = new RayResult
         {
@@ -36,6 +36,12 @@ public static class RayCalculator
             }
         }
 
+        var wallSet = new HashSet<Vector2Int>();
+        if (walls != null)
+        {
+            for (int i = 0; i < walls.Count; i++) wallSet.Add(walls[i]);
+        }
+
         Vector2Int curCell = emitter.cell;
         Vector2Int dir = emitter.direction;
         Vector2 segmentStart = emitter.GetExitLocalPos(grid);
@@ -49,6 +55,13 @@ public static class RayCalculator
             if (!grid.IsInBounds(next))
             {
                 Vector2 toLocal = grid.GetCellLocalPos(curCell) + new Vector2(dir.x, dir.y) * grid.CellSize * 0.5f;
+                result.segments.Add(new RaySegment { fromLocal = segmentStart, toLocal = toLocal });
+                break;
+            }
+
+            if (wallSet.Contains(next))
+            {
+                Vector2 toLocal = grid.GetCellLocalPos(curCell) + new Vector2(dir.x, dir.y) * grid.CellSize * 0.55f;
                 result.segments.Add(new RaySegment { fromLocal = segmentStart, toLocal = toLocal });
                 break;
             }
