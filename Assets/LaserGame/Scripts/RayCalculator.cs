@@ -15,9 +15,17 @@ public struct RayResult
 
 public static class RayCalculator
 {
-    private const int MaxBounces = 64;
+    private const int MaxTotalSteps = 256;
 
-    public static RayResult Calculate(GridSystem grid, LaserEmitter emitter, List<MirrorElement> mirrors, List<Vector2Int> walls)
+    private struct BeamState
+    {
+        public Vector2Int curCell;
+        public Vector2Int dir;
+        public Vector2 segmentStart;
+        public int splittersHit;
+    }
+
+    public static RayResult Calculate(GridSystem grid, LaserEmitter emitter, List<MirrorElement> mirrors, List<Vector2Int> walls, List<SplitterElement> splitters)
     {
         var result = new RayResult
         {
@@ -42,44 +50,88 @@ public static class RayCalculator
             for (int i = 0; i < walls.Count; i++) wallSet.Add(walls[i]);
         }
 
-        Vector2Int curCell = emitter.cell;
-        Vector2Int dir = emitter.direction;
-        Vector2 segmentStart = emitter.GetExitLocalPos(grid);
-        result.visitedCells.Add(curCell);
-
-        int safety = MaxBounces;
-        while (safety-- > 0)
+        var splitterMap = new Dictionary<Vector2Int, SplitterElement>();
+        if (splitters != null)
         {
-            Vector2Int next = curCell + dir;
-
-            if (!grid.IsInBounds(next))
+            for (int i = 0; i < splitters.Count; i++)
             {
-                Vector2 toLocal = grid.GetCellLocalPos(curCell) + new Vector2(dir.x, dir.y) * grid.CellSize * 0.5f;
-                result.segments.Add(new RaySegment { fromLocal = segmentStart, toLocal = toLocal });
-                break;
+                var s = splitters[i];
+                if (s != null) splitterMap[s.cell] = s;
             }
+        }
 
-            if (wallSet.Contains(next))
+        var stack = new Stack<BeamState>();
+        stack.Push(new BeamState
+        {
+            curCell = emitter.cell,
+            dir = emitter.direction,
+            segmentStart = emitter.GetExitLocalPos(grid),
+            splittersHit = 0
+        });
+        result.visitedCells.Add(emitter.cell);
+
+        int totalSteps = 0;
+        while (stack.Count > 0 && totalSteps < MaxTotalSteps)
+        {
+            var beam = stack.Pop();
+
+            while (totalSteps < MaxTotalSteps)
             {
-                Vector2 toLocal = grid.GetCellLocalPos(curCell) + new Vector2(dir.x, dir.y) * grid.CellSize * 0.55f;
-                result.segments.Add(new RaySegment { fromLocal = segmentStart, toLocal = toLocal });
-                break;
+                totalSteps++;
+                Vector2Int next = beam.curCell + beam.dir;
+
+                if (!grid.IsInBounds(next))
+                {
+                    Vector2 toLocal = grid.GetCellLocalPos(beam.curCell) + new Vector2(beam.dir.x, beam.dir.y) * grid.CellSize * 0.5f;
+                    result.segments.Add(new RaySegment { fromLocal = beam.segmentStart, toLocal = toLocal });
+                    break;
+                }
+
+                if (wallSet.Contains(next))
+                {
+                    Vector2 toLocal = grid.GetCellLocalPos(beam.curCell) + new Vector2(beam.dir.x, beam.dir.y) * grid.CellSize * 0.55f;
+                    result.segments.Add(new RaySegment { fromLocal = beam.segmentStart, toLocal = toLocal });
+                    break;
+                }
+
+                result.visitedCells.Add(next);
+
+                if (splitterMap.TryGetValue(next, out var splitter))
+                {
+                    Vector2 splitterCenter = grid.GetCellLocalPos(next);
+                    result.segments.Add(new RaySegment { fromLocal = beam.segmentStart, toLocal = splitterCenter });
+
+                    if (beam.splittersHit < 8)
+                    {
+                        Vector2Int perpDir = MirrorReflection.Reflect(beam.dir, splitter.rotationStep);
+                        stack.Push(new BeamState
+                        {
+                            curCell = next,
+                            dir = perpDir,
+                            segmentStart = splitterCenter,
+                            splittersHit = beam.splittersHit + 1
+                        });
+                    }
+
+                    beam.curCell = next;
+                    beam.segmentStart = splitterCenter;
+                    beam.splittersHit++;
+                    continue;
+                }
+
+                if (mirrorMap.TryGetValue(next, out var mirror))
+                {
+                    Vector2 mirrorCenter = grid.GetCellLocalPos(next);
+                    result.segments.Add(new RaySegment { fromLocal = beam.segmentStart, toLocal = mirrorCenter });
+
+                    beam.dir = MirrorReflection.Reflect(beam.dir, mirror.rotationStep);
+                    beam.curCell = next;
+                    beam.segmentStart = mirrorCenter;
+                    continue;
+                }
+
+                beam.curCell = next;
             }
-
-            result.visitedCells.Add(next);
-
-            if (mirrorMap.TryGetValue(next, out var mirror))
-            {
-                Vector2 mirrorCenter = grid.GetCellLocalPos(next);
-                result.segments.Add(new RaySegment { fromLocal = segmentStart, toLocal = mirrorCenter });
-
-                dir = MirrorReflection.Reflect(dir, mirror.rotationStep);
-                curCell = next;
-                segmentStart = mirrorCenter;
-                continue;
-            }
-
-            curCell = next;
         }
 
         return result;

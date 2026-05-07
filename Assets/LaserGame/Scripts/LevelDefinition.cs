@@ -13,6 +13,7 @@ public class LevelDefinition
     public List<Vector2Int> batteries = new List<Vector2Int>();
     public List<Vector2Int> energyStars = new List<Vector2Int>();
     public List<Vector2Int> walls = new List<Vector2Int>();
+    public List<SplitterPlacement> splitters = new List<SplitterPlacement>();
     public int maxMovesForThreeStars = 3;
 }
 
@@ -21,4 +22,11 @@ public struct MirrorPlacement
 {
     public Vector2Int cell;
     public int initialRotationStep;
+}
+
+[Serializable]
+public struct SplitterPlacement
+{
+    public Vector2Int cell;
+    public int rotationStep;
 }

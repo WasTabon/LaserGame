@@ -31,6 +31,7 @@ public class GameController : MonoBehaviour
     public BatteryElement batteryTemplate;
     public WallElement wallTemplate;
     public EnergyStarElement energyStarTemplate;
+    public SplitterElement splitterTemplate;
 
     [Header("Bottom")]
     public Button resetButton;
@@ -63,6 +64,7 @@ public class GameController : MonoBehaviour
     private List<BatteryElement> _activeBatteries = new List<BatteryElement>();
     private List<WallElement> _activeWalls = new List<WallElement>();
     private List<EnergyStarElement> _activeEnergyStars = new List<EnergyStarElement>();
+    private List<SplitterElement> _activeSplitters = new List<SplitterElement>();
 
     private void OnEnable()
     {
@@ -143,6 +145,7 @@ public class GameController : MonoBehaviour
         if (def.batteries == null) def.batteries = new List<Vector2Int>();
         if (def.energyStars == null) def.energyStars = new List<Vector2Int>();
         if (def.walls == null) def.walls = new List<Vector2Int>();
+        if (def.splitters == null) def.splitters = new List<SplitterPlacement>();
 
         grid.Build(def.cols, def.rows);
         emitter.cell = def.emitterCell;
@@ -152,6 +155,7 @@ public class GameController : MonoBehaviour
         ClearAllElements();
         SpawnWalls(def.walls);
         SpawnEnergyStars(def.energyStars);
+        SpawnSplitters(def.splitters);
         SpawnBatteries(def.batteries);
         SpawnMirrors(def.mirrors);
     }
@@ -165,6 +169,7 @@ public class GameController : MonoBehaviour
         ClearList(_activeBatteries, null);
         ClearList(_activeWalls, null);
         ClearList(_activeEnergyStars, null);
+        ClearList(_activeSplitters, null);
 
         if (elementsHolder != null)
         {
@@ -267,10 +272,30 @@ public class GameController : MonoBehaviour
         }
     }
 
+    private void SpawnSplitters(List<SplitterPlacement> placements)
+    {
+        if (placements == null || placements.Count == 0) return;
+        if (splitterTemplate == null) { Debug.LogWarning("GameController: splitterTemplate is null"); return; }
+        if (elementsHolder == null) return;
+
+        for (int i = 0; i < placements.Count; i++)
+        {
+            var p = placements[i];
+            var go = Instantiate(splitterTemplate.gameObject, elementsHolder);
+            go.name = "Splitter_" + p.cell.x + "_" + p.cell.y;
+            go.SetActive(true);
+            var sp = go.GetComponent<SplitterElement>();
+            sp.cell = p.cell;
+            sp.rotationStep = p.rotationStep;
+            sp.PlaceOnGrid(grid);
+            _activeSplitters.Add(sp);
+        }
+    }
+
     public void RecalculateRay()
     {
         if (rayRenderer == null || grid == null || emitter == null) return;
-        var result = RayCalculator.Calculate(grid, emitter, _activeMirrors, GetWallCells());
+        var result = RayCalculator.Calculate(grid, emitter, _activeMirrors, GetWallCells(), _activeSplitters);
         rayRenderer.Render(result.segments, grid.CellSize);
 
         UpdateBatteryStates(result.visitedCells);
