@@ -48,6 +48,9 @@ public class GameController : MonoBehaviour
     [Header("Test Level")]
     public LevelDefinition testLevel = new LevelDefinition();
 
+    [Header("Levels Database")]
+    public LevelsDatabaseSO levelsDatabase;
+
     [Header("Scenes")]
     public string levelSelectSceneName = "LevelSelect";
 
@@ -65,6 +68,7 @@ public class GameController : MonoBehaviour
     private List<WallElement> _activeWalls = new List<WallElement>();
     private List<EnergyStarElement> _activeEnergyStars = new List<EnergyStarElement>();
     private List<SplitterElement> _activeSplitters = new List<SplitterElement>();
+    private LevelDefinition _activeLevel;
 
     private void OnEnable()
     {
@@ -110,7 +114,9 @@ public class GameController : MonoBehaviour
         _displayedCoins = SaveSystem.Data.coins;
         UpdateCoinsText(_displayedCoins);
         UpdateLevelText();
-        ApplyLevelDefinition(testLevel);
+        var def = LevelLoader.LoadForLevel(GameSession.CurrentLevel, levelsDatabase, testLevel);
+        _activeLevel = def;
+        ApplyLevelDefinition(def);
         UpdateMoves(0);
         _isWon = false;
         AnimateIn();
@@ -471,7 +477,8 @@ public class GameController : MonoBehaviour
     {
         int stars = 1;
         if (AllEnergyStarsCollected()) stars++;
-        if (_moves <= testLevel.maxMovesForThreeStars) stars++;
+        var lvl = _activeLevel != null ? _activeLevel : testLevel;
+        if (_moves <= lvl.maxMovesForThreeStars) stars++;
         return Mathf.Clamp(stars, 1, 3);
     }
 
@@ -507,11 +514,12 @@ public class GameController : MonoBehaviour
 
     private void OnResetClicked()
     {
-        for (int i = 0; i < _activeMirrors.Count && i < testLevel.mirrors.Count; i++)
+        var lvl = _activeLevel != null ? _activeLevel : testLevel;
+        for (int i = 0; i < _activeMirrors.Count && i < lvl.mirrors.Count; i++)
         {
             if (_activeMirrors[i] != null)
             {
-                _activeMirrors[i].ResetRotation(testLevel.mirrors[i].initialRotationStep);
+                _activeMirrors[i].ResetRotation(lvl.mirrors[i].initialRotationStep);
             }
         }
 
@@ -532,7 +540,8 @@ public class GameController : MonoBehaviour
     private void HandleReplay()
     {
         _isWon = false;
-        ApplyLevelDefinition(testLevel);
+        var def = _activeLevel != null ? _activeLevel : testLevel;
+        ApplyLevelDefinition(def);
         UpdateMoves(0);
         RecalculateRay();
         if (rayRenderer != null) rayRenderer.RevealAnimation();

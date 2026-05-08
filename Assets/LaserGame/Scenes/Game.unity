@@ -7366,6 +7366,7 @@ MonoBehaviour:
     walls: []
     splitters: []
     maxMovesForThreeStars: 3
+  levelsDatabase: {fileID: 11400000, guid: 7b9879b422cffe944908cb4a9c19e1d4, type: 2}
   levelSelectSceneName: LevelSelect
   winFlashColor: {r: 0.2, g: 0.95, b: 1, a: 1}
   coinFlyColor: {r: 1, g: 0.85, b: 0.25, a: 1}
