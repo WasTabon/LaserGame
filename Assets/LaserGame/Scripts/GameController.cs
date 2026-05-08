@@ -42,6 +42,11 @@ public class GameController : MonoBehaviour
     public Image winFlashOverlay;
     public LevelCompletePopup levelCompletePopup;
 
+    [Header("Pause")]
+    public Button pauseButton;
+    public PausePopup pausePopup;
+    public SettingsPopup gameSettingsPopup;
+
     [Header("Coin Fly")]
     public RectTransform coinFlyHost;
 
@@ -82,11 +87,23 @@ public class GameController : MonoBehaviour
             resetButton.onClick.RemoveListener(OnResetClicked);
             resetButton.onClick.AddListener(OnResetClicked);
         }
+        if (pauseButton != null)
+        {
+            pauseButton.onClick.RemoveListener(OnPauseClicked);
+            pauseButton.onClick.AddListener(OnPauseClicked);
+        }
         if (levelCompletePopup != null)
         {
             levelCompletePopup.OnReplay = HandleReplay;
             levelCompletePopup.OnNext = HandleNext;
             levelCompletePopup.OnMenu = HandleMenu;
+        }
+        if (pausePopup != null)
+        {
+            pausePopup.OnResume = HandleResume;
+            pausePopup.OnRestart = HandleRestart;
+            pausePopup.OnSettings = HandleSettings;
+            pausePopup.OnHome = HandleHome;
         }
     }
 
@@ -94,6 +111,7 @@ public class GameController : MonoBehaviour
     {
         if (backButton != null) backButton.onClick.RemoveListener(OnBackClicked);
         if (resetButton != null) resetButton.onClick.RemoveListener(OnResetClicked);
+        if (pauseButton != null) pauseButton.onClick.RemoveListener(OnPauseClicked);
 
         for (int i = 0; i < _activeMirrors.Count; i++)
         {
@@ -107,6 +125,16 @@ public class GameController : MonoBehaviour
             levelCompletePopup.OnNext = null;
             levelCompletePopup.OnMenu = null;
         }
+
+        if (pausePopup != null)
+        {
+            pausePopup.OnResume = null;
+            pausePopup.OnRestart = null;
+            pausePopup.OnSettings = null;
+            pausePopup.OnHome = null;
+        }
+
+        Time.timeScale = 1f;
     }
 
     private void Start()
@@ -137,8 +165,18 @@ public class GameController : MonoBehaviour
 
     private void UpdateMoves(int value)
     {
+        bool changed = value != _moves;
         _moves = value;
-        if (movesText != null) movesText.text = "MOVES: " + _moves;
+        if (movesText != null)
+        {
+            movesText.text = "MOVES: " + _moves;
+            if (changed)
+            {
+                movesText.rectTransform.DOKill();
+                movesText.rectTransform.localScale = Vector3.one;
+                movesText.rectTransform.DOPunchScale(Vector3.one * 0.18f, 0.25f, 6, 0.5f);
+            }
+        }
     }
 
     public void ApplyLevelDefinition(LevelDefinition def)
@@ -515,12 +553,22 @@ public class GameController : MonoBehaviour
     private void OnResetClicked()
     {
         var lvl = _activeLevel != null ? _activeLevel : testLevel;
+
+        float maxDist = 0.01f;
+        for (int i = 0; i < _activeMirrors.Count; i++)
+        {
+            if (_activeMirrors[i] == null || _activeMirrors[i].rectTransform == null) continue;
+            float d = _activeMirrors[i].rectTransform.anchoredPosition.magnitude;
+            if (d > maxDist) maxDist = d;
+        }
+
         for (int i = 0; i < _activeMirrors.Count && i < lvl.mirrors.Count; i++)
         {
-            if (_activeMirrors[i] != null)
-            {
-                _activeMirrors[i].ResetRotation(lvl.mirrors[i].initialRotationStep);
-            }
+            var m = _activeMirrors[i];
+            if (m == null) continue;
+            float dist = m.rectTransform != null ? m.rectTransform.anchoredPosition.magnitude : 0f;
+            float delay = (dist / maxDist) * 0.25f;
+            m.AnimateResetTo(lvl.mirrors[i].initialRotationStep, delay);
         }
 
         UpdateMoves(0);
@@ -537,6 +585,51 @@ public class GameController : MonoBehaviour
         HapticManager.Trigger(HapticManager.HapticType.Medium);
     }
 
+    private void OnPauseClicked()
+    {
+        Time.timeScale = 0f;
+        if (pausePopup != null)
+        {
+            pausePopup.transform.SetAsLastSibling();
+            pausePopup.Open();
+        }
+    }
+
+    private void HandleResume()
+    {
+        Time.timeScale = 1f;
+    }
+
+    private void HandleRestart()
+    {
+        Time.timeScale = 1f;
+        var def = _activeLevel != null ? _activeLevel : testLevel;
+        ApplyLevelDefinition(def);
+        UpdateMoves(0);
+        _isWon = false;
+        RecalculateRay();
+        if (rayRenderer != null) rayRenderer.RevealAnimation();
+        if (emitter != null) emitter.PulseAppear();
+    }
+
+    private void HandleSettings()
+    {
+        if (gameSettingsPopup != null)
+        {
+            gameSettingsPopup.transform.SetAsLastSibling();
+            gameSettingsPopup.Open();
+        }
+    }
+
+    private void HandleHome()
+    {
+        Time.timeScale = 1f;
+        if (SceneTransitionManager.Instance != null)
+            SceneTransitionManager.Instance.LoadScene(levelSelectSceneName);
+        else
+            SceneManager.LoadScene(levelSelectSceneName);
+    }
+
     private void HandleReplay()
     {
         _isWon = false;
@@ -549,6 +642,7 @@ public class GameController : MonoBehaviour
 
     private void HandleNext()
     {
+        Time.timeScale = 1f;
         GameSession.CurrentLevel = Mathf.Min(GameSession.CurrentLevel + 1, 30);
         if (SceneTransitionManager.Instance != null)
             SceneTransitionManager.Instance.LoadScene(SceneManager.GetActiveScene().name);
@@ -558,6 +652,7 @@ public class GameController : MonoBehaviour
 
     private void HandleMenu()
     {
+        Time.timeScale = 1f;
         if (SceneTransitionManager.Instance != null)
             SceneTransitionManager.Instance.LoadScene(levelSelectSceneName);
         else

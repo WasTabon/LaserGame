@@ -68,6 +68,44 @@ public class MirrorElement : MonoBehaviour
         ApplyRotationImmediate();
     }
 
+    public void AnimateResetTo(int targetStep, float delay)
+    {
+        int diff = ((targetStep - rotationStep) % 2 + 2) % 2;
+        rotationStep = targetStep;
+
+        if (diff == 0)
+        {
+            if (rectTransform != null)
+            {
+                rectTransform.DOKill(false);
+                rectTransform.localScale = Vector3.one;
+                DG.Tweening.DOTween.Sequence()
+                    .AppendInterval(delay)
+                    .Append(rectTransform.DOPunchScale(Vector3.one * 0.08f, 0.25f, 6, 0.6f));
+            }
+            return;
+        }
+
+        _visualRotationDeg += 90f;
+
+        if (diagonalLine != null)
+        {
+            diagonalLine.rectTransform.DOKill();
+            DG.Tweening.DOTween.Sequence()
+                .AppendInterval(delay)
+                .Append(diagonalLine.rectTransform.DOLocalRotate(new Vector3(0, 0, _visualRotationDeg), 0.3f, DG.Tweening.RotateMode.FastBeyond360).SetEase(DG.Tweening.Ease.OutBack));
+        }
+
+        if (rectTransform != null)
+        {
+            rectTransform.DOKill(false);
+            rectTransform.localScale = Vector3.one;
+            DG.Tweening.DOTween.Sequence()
+                .AppendInterval(delay)
+                .Append(rectTransform.DOPunchScale(Vector3.one * 0.12f, 0.3f, 6, 0.5f));
+        }
+    }
+
     private void HandleClick()
     {
         rotationStep = (rotationStep + 1) % 2;
