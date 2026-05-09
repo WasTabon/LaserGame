@@ -24,7 +24,8 @@ MonoBehaviour:
       initialRotationStep: 1
     batteries:
     - {x: 4, y: 4}
-    energyStars: []
+    energyStars:
+    - {x: 3, y: 4}
     walls:
     - {x: 2, y: 2}
     splitters: []

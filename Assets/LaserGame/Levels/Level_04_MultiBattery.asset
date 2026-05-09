@@ -19,10 +19,10 @@ MonoBehaviour:
     emitterDir: {x: 1, y: 0}
     mirrors:
     - cell: {x: 4, y: 3}
-      initialRotationStep: 1
+      initialRotationStep: 0
     batteries:
     - {x: 2, y: 3}
-    - {x: 4, y: 5}
+    - {x: 4, y: 1}
     energyStars: []
     walls: []
     splitters: []
