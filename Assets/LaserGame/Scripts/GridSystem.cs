@@ -12,13 +12,16 @@ public class GridSystem : MonoBehaviour
     public int rows = 5;
     public float cellSpacing = 2f;
 
+    public bool useFixedCellSize = false;
+    public float fixedCellSize = 110f;
+
     public Color cellColor = new Color(0.07f, 0.07f, 0.13f, 1f);
     public Color fieldBgColor = new Color(0.04f, 0.04f, 0.09f, 1f);
 
     private float _cellSize;
 
     public float CellSize => _cellSize;
-    public Vector2 FieldSize => fieldRect.rect.size;
+    public Vector2 FieldSize => new Vector2(cols * _cellSize, rows * _cellSize);
 
     public void Build(int newCols, int newRows)
     {
@@ -32,10 +35,17 @@ public class GridSystem : MonoBehaviour
         Debug.Assert(fieldRect != null, "GridSystem: fieldRect is null");
         Debug.Assert(cellsHolder != null, "GridSystem: cellsHolder is null");
 
-        var size = fieldRect.rect.size;
-        float cw = (size.x - cellSpacing * (cols + 1)) / cols;
-        float ch = (size.y - cellSpacing * (rows + 1)) / rows;
-        _cellSize = Mathf.Min(cw, ch);
+        if (useFixedCellSize)
+        {
+            _cellSize = fixedCellSize;
+        }
+        else
+        {
+            var size = fieldRect.rect.size;
+            float cw = (size.x - cellSpacing * (cols + 1)) / cols;
+            float ch = (size.y - cellSpacing * (rows + 1)) / rows;
+            _cellSize = Mathf.Min(cw, ch);
+        }
 
         for (int i = cellsHolder.childCount - 1; i >= 0; i--)
         {

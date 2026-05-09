@@ -32,6 +32,7 @@ public class GameController : MonoBehaviour
     public WallElement wallTemplate;
     public EnergyStarElement energyStarTemplate;
     public SplitterElement splitterTemplate;
+    public FieldPanController fieldPanController;
 
     [Header("Bottom")]
     public Button resetButton;
@@ -258,6 +259,11 @@ public class GameController : MonoBehaviour
         emitter.cell = def.emitterCell;
         emitter.direction = def.emitterDir;
         emitter.PlaceOnGrid(grid);
+
+        if (fieldPanController != null)
+        {
+            fieldPanController.SetContentSize(def.cols * grid.CellSize, def.rows * grid.CellSize);
+        }
 
         ClearAllElements();
         SpawnWalls(def.walls);

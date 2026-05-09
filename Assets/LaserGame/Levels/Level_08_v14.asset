@@ -1,0 +1,44 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ca028fd9cf3a54a4f881ebb3ae130d7c, type: 3}
+  m_Name: Level_08_v14
+  m_EditorClassIdentifier: 
+  definition:
+    cols: 12
+    rows: 12
+    emitterCell: {x: 0, y: 6}
+    emitterDir: {x: 1, y: 0}
+    mirrors:
+    - cell: {x: 2, y: 6}
+      initialRotationStep: 1
+    - cell: {x: 2, y: 9}
+      initialRotationStep: 1
+    - cell: {x: 5, y: 9}
+      initialRotationStep: 0
+    - cell: {x: 5, y: 3}
+      initialRotationStep: 0
+    - cell: {x: 9, y: 3}
+      initialRotationStep: 1
+    - cell: {x: 9, y: 9}
+      initialRotationStep: 0
+    batteries:
+    - {x: 11, y: 9}
+    - {x: 9, y: 6}
+    energyStars:
+    - {x: 1, y: 6}
+    - {x: 2, y: 8}
+    - {x: 7, y: 9}
+    walls:
+    - {x: 7, y: 3}
+    - {x: 4, y: 6}
+    splitters: []
+    maxMovesForThreeStars: 6
