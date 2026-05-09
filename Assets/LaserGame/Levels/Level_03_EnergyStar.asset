@@ -13,18 +13,24 @@ MonoBehaviour:
   m_Name: Level_03_EnergyStar
   m_EditorClassIdentifier: 
   definition:
-    cols: 5
-    rows: 5
-    emitterCell: {x: 0, y: 2}
+    cols: 7
+    rows: 7
+    emitterCell: {x: 0, y: 3}
     emitterDir: {x: 1, y: 0}
     mirrors:
-    - cell: {x: 3, y: 2}
+    - cell: {x: 2, y: 3}
       initialRotationStep: 1
+    - cell: {x: 2, y: 5}
+      initialRotationStep: 1
+    - cell: {x: 5, y: 5}
+      initialRotationStep: 0
     batteries:
-    - {x: 3, y: 4}
+    - {x: 5, y: 0}
     energyStars:
-    - {x: 1, y: 2}
-    - {x: 3, y: 3}
-    walls: []
+    - {x: 1, y: 3}
+    - {x: 5, y: 3}
+    walls:
+    - {x: 4, y: 3}
+    - {x: 3, y: 1}
     splitters: []
-    maxMovesForThreeStars: 1
+    maxMovesForThreeStars: 3

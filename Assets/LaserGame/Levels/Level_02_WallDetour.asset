@@ -13,20 +13,22 @@ MonoBehaviour:
   m_Name: Level_02_WallDetour
   m_EditorClassIdentifier: 
   definition:
-    cols: 5
-    rows: 5
-    emitterCell: {x: 0, y: 2}
+    cols: 7
+    rows: 7
+    emitterCell: {x: 0, y: 3}
     emitterDir: {x: 1, y: 0}
     mirrors:
-    - cell: {x: 1, y: 2}
+    - cell: {x: 1, y: 3}
       initialRotationStep: 1
-    - cell: {x: 1, y: 4}
+    - cell: {x: 1, y: 5}
       initialRotationStep: 1
+    - cell: {x: 3, y: 5}
+      initialRotationStep: 0
     batteries:
-    - {x: 4, y: 4}
+    - {x: 1, y: 4}
+    - {x: 3, y: 1}
     energyStars:
-    - {x: 3, y: 4}
-    walls:
-    - {x: 2, y: 2}
+    - {x: 2, y: 5}
+    walls: []
     splitters: []
-    maxMovesForThreeStars: 2
+    maxMovesForThreeStars: 3

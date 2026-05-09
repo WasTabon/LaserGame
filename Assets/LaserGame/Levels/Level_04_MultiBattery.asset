@@ -18,12 +18,21 @@ MonoBehaviour:
     emitterCell: {x: 0, y: 3}
     emitterDir: {x: 1, y: 0}
     mirrors:
-    - cell: {x: 4, y: 3}
+    - cell: {x: 2, y: 3}
+      initialRotationStep: 1
+    - cell: {x: 2, y: 5}
+      initialRotationStep: 1
+    - cell: {x: 5, y: 5}
       initialRotationStep: 0
+    - cell: {x: 5, y: 3}
+      initialRotationStep: 1
     batteries:
-    - {x: 2, y: 3}
-    - {x: 4, y: 1}
-    energyStars: []
-    walls: []
+    - {x: 4, y: 5}
+    - {x: 5, y: 4}
+    energyStars:
+    - {x: 1, y: 3}
+    - {x: 3, y: 3}
+    walls:
+    - {x: 4, y: 3}
     splitters: []
-    maxMovesForThreeStars: 1
+    maxMovesForThreeStars: 4
