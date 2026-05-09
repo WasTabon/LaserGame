@@ -44,6 +44,14 @@ public class AudioManager : MonoBehaviour
             sfxSource.volume = 0.8f;
             sfxSource.playOnAwake = false;
         }
+
+        if (buttonClickClip == null) buttonClickClip = ProceduralAudio.CreateClick();
+        if (popupOpenClip == null) popupOpenClip = ProceduralAudio.CreatePopupOpen();
+        if (popupCloseClip == null) popupCloseClip = ProceduralAudio.CreatePopupClose();
+        if (mirrorRotateClip == null) mirrorRotateClip = ProceduralAudio.CreateMirrorRotate();
+        if (batteryChargeClip == null) batteryChargeClip = ProceduralAudio.CreateBatteryCharge();
+        if (energyStarClip == null) energyStarClip = ProceduralAudio.CreateEnergyStarCollect();
+        if (winClip == null) winClip = ProceduralAudio.CreateWin();
     }
 
     private void OnEnable()

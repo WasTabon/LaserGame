@@ -60,11 +60,12 @@ public static class Iteration10_Setup
         var pointerRT = pointer.GetComponent<RectTransform>();
         StretchFull(pointerRT);
         var pointerTMP = EnsureComponent<TextMeshProUGUI>(pointer);
-        pointerTMP.text = "\u261F";
-        pointerTMP.fontSize = 130;
+        pointerTMP.text = "TAP";
+        pointerTMP.fontSize = 70;
         pointerTMP.fontStyle = FontStyles.Bold;
         pointerTMP.color = YellowNeon;
         pointerTMP.alignment = TextAlignmentOptions.Center;
+        pointerTMP.characterSpacing = 8;
         pointerTMP.raycastTarget = false;
 
         var th = EnsureComponent<TutorialHint>(hint);
