@@ -50,6 +50,17 @@ public class GameController : MonoBehaviour
     [Header("Tutorial")]
     public TutorialHint tutorialHint;
 
+    [Header("Boosts")]
+    public Button hintBoostButton;
+    public TextMeshProUGUI hintBoostCountText;
+    public Button undoBoostButton;
+    public TextMeshProUGUI undoBoostCountText;
+    public Button skipBoostButton;
+    public TextMeshProUGUI skipBoostCountText;
+    public RectTransform boostBarRect;
+    public CanvasGroup boostBarGroup;
+    public Image hintHighlightTemplate;
+
     [Header("Coin Fly")]
     public RectTransform coinFlyHost;
 
@@ -77,6 +88,14 @@ public class GameController : MonoBehaviour
     private List<EnergyStarElement> _activeEnergyStars = new List<EnergyStarElement>();
     private List<SplitterElement> _activeSplitters = new List<SplitterElement>();
     private LevelDefinition _activeLevel;
+    private Stack<MoveRecord> _moveHistory = new Stack<MoveRecord>();
+    private bool _skipUsed;
+
+    private struct MoveRecord
+    {
+        public int mirrorIndex;
+        public int prevRotationStep;
+    }
 
     private void OnEnable()
     {
@@ -108,6 +127,21 @@ public class GameController : MonoBehaviour
             pausePopup.OnSettings = HandleSettings;
             pausePopup.OnHome = HandleHome;
         }
+        if (hintBoostButton != null)
+        {
+            hintBoostButton.onClick.RemoveListener(OnHintBoostClicked);
+            hintBoostButton.onClick.AddListener(OnHintBoostClicked);
+        }
+        if (undoBoostButton != null)
+        {
+            undoBoostButton.onClick.RemoveListener(OnUndoBoostClicked);
+            undoBoostButton.onClick.AddListener(OnUndoBoostClicked);
+        }
+        if (skipBoostButton != null)
+        {
+            skipBoostButton.onClick.RemoveListener(OnSkipBoostClicked);
+            skipBoostButton.onClick.AddListener(OnSkipBoostClicked);
+        }
     }
 
     private void OnDisable()
@@ -115,6 +149,9 @@ public class GameController : MonoBehaviour
         if (backButton != null) backButton.onClick.RemoveListener(OnBackClicked);
         if (resetButton != null) resetButton.onClick.RemoveListener(OnResetClicked);
         if (pauseButton != null) pauseButton.onClick.RemoveListener(OnPauseClicked);
+        if (hintBoostButton != null) hintBoostButton.onClick.RemoveListener(OnHintBoostClicked);
+        if (undoBoostButton != null) undoBoostButton.onClick.RemoveListener(OnUndoBoostClicked);
+        if (skipBoostButton != null) skipBoostButton.onClick.RemoveListener(OnSkipBoostClicked);
 
         for (int i = 0; i < _activeMirrors.Count; i++)
         {
@@ -158,6 +195,7 @@ public class GameController : MonoBehaviour
         if (AudioManager.Instance != null) AudioManager.Instance.PlayGameMusic();
 
         TryShowTutorial();
+        RefreshBoostUI();
     }
 
     private void TryShowTutorial()
@@ -590,6 +628,7 @@ public class GameController : MonoBehaviour
 
     private int CalculateStars()
     {
+        if (_skipUsed) return 1;
         int stars = 1;
         if (AllEnergyStarsCollected()) stars++;
         var lvl = _activeLevel != null ? _activeLevel : testLevel;
@@ -615,6 +654,13 @@ public class GameController : MonoBehaviour
 
     private void HandleMirrorRotated(MirrorElement m)
     {
+        int idx = _activeMirrors.IndexOf(m);
+        if (idx >= 0)
+        {
+            int prev = (m.rotationStep + 1) % 2;
+            _moveHistory.Push(new MoveRecord { mirrorIndex = idx, prevRotationStep = prev });
+        }
+
         UpdateMoves(_moves + 1);
         RecalculateRay();
         if (AudioManager.Instance != null) AudioManager.Instance.PlayMirrorRotate();
@@ -625,6 +671,8 @@ public class GameController : MonoBehaviour
             PlayerPrefs.SetInt("tutorial_shown_v1", 1);
             PlayerPrefs.Save();
         }
+
+        RefreshBoostUI();
     }
 
     private void OnBackClicked()
@@ -638,6 +686,8 @@ public class GameController : MonoBehaviour
     private void OnResetClicked()
     {
         var lvl = _activeLevel != null ? _activeLevel : testLevel;
+
+        _moveHistory.Clear();
 
         float maxDist = 0.01f;
         for (int i = 0; i < _activeMirrors.Count; i++)
@@ -658,6 +708,7 @@ public class GameController : MonoBehaviour
 
         UpdateMoves(0);
         _isWon = false;
+        _skipUsed = false;
         RecalculateRay();
         if (rayRenderer != null) rayRenderer.RevealAnimation();
 
@@ -689,12 +740,15 @@ public class GameController : MonoBehaviour
     {
         Time.timeScale = 1f;
         var def = _activeLevel != null ? _activeLevel : testLevel;
+        _moveHistory.Clear();
+        _skipUsed = false;
         ApplyLevelDefinition(def);
         UpdateMoves(0);
         _isWon = false;
         RecalculateRay();
         if (rayRenderer != null) rayRenderer.RevealAnimation();
         if (emitter != null) emitter.PulseAppear();
+        RefreshBoostUI();
     }
 
     private void HandleSettings()
@@ -718,11 +772,14 @@ public class GameController : MonoBehaviour
     private void HandleReplay()
     {
         _isWon = false;
+        _skipUsed = false;
+        _moveHistory.Clear();
         var def = _activeLevel != null ? _activeLevel : testLevel;
         ApplyLevelDefinition(def);
         UpdateMoves(0);
         RecalculateRay();
         if (rayRenderer != null) rayRenderer.RevealAnimation();
+        RefreshBoostUI();
     }
 
     private void HandleNext()
@@ -752,6 +809,132 @@ public class GameController : MonoBehaviour
         }
         if (_activeBatteries.Count == 0) _isWon = false;
         else CheckWinCondition();
+    }
+
+    private void OnHintBoostClicked()
+    {
+        if (_isWon) return;
+        if (SaveSystem.Data.hintCount <= 0) { ShakeBoostButton(hintBoostButton); return; }
+        if (_activeMirrors.Count == 0) { ShakeBoostButton(hintBoostButton); return; }
+
+        SaveSystem.Data.hintCount--;
+        SaveSystem.Save();
+        RefreshBoostUI();
+
+        var target = _activeMirrors[0];
+        if (target == null || target.rectTransform == null) return;
+
+        if (target.rectTransform != null)
+        {
+            target.rectTransform.DOKill(false);
+            target.rectTransform.localScale = Vector3.one;
+            target.rectTransform.DOPunchScale(Vector3.one * 0.25f, 0.6f, 8, 0.5f);
+        }
+
+        SpawnHintRing(target.rectTransform.position);
+        if (AudioManager.Instance != null) AudioManager.Instance.PlayButtonClick();
+        HapticManager.Trigger(HapticManager.HapticType.Light);
+    }
+
+    private void OnUndoBoostClicked()
+    {
+        if (_isWon) return;
+        if (SaveSystem.Data.undoCount <= 0) { ShakeBoostButton(undoBoostButton); return; }
+        if (_moveHistory.Count == 0) { ShakeBoostButton(undoBoostButton); return; }
+
+        SaveSystem.Data.undoCount--;
+        SaveSystem.Save();
+        RefreshBoostUI();
+
+        var rec = _moveHistory.Pop();
+        if (rec.mirrorIndex >= 0 && rec.mirrorIndex < _activeMirrors.Count)
+        {
+            var m = _activeMirrors[rec.mirrorIndex];
+            if (m != null) m.AnimateResetTo(rec.prevRotationStep, 0f);
+        }
+        UpdateMoves(Mathf.Max(0, _moves - 1));
+        RecalculateRay();
+        if (rayRenderer != null) rayRenderer.RevealAnimation();
+        if (AudioManager.Instance != null) AudioManager.Instance.PlayMirrorRotate();
+        HapticManager.Trigger(HapticManager.HapticType.Medium);
+    }
+
+    private void OnSkipBoostClicked()
+    {
+        if (_isWon) return;
+        if (SaveSystem.Data.skipCount <= 0) { ShakeBoostButton(skipBoostButton); return; }
+
+        SaveSystem.Data.skipCount--;
+        SaveSystem.Save();
+        RefreshBoostUI();
+
+        _skipUsed = true;
+        _isWon = true;
+        StartCoroutine(WinSequenceRoutine());
+        HapticManager.Trigger(HapticManager.HapticType.Heavy);
+    }
+
+    private void RefreshBoostUI()
+    {
+        if (hintBoostCountText != null) hintBoostCountText.text = "x" + SaveSystem.Data.hintCount;
+        if (undoBoostCountText != null) undoBoostCountText.text = "x" + SaveSystem.Data.undoCount;
+        if (skipBoostCountText != null) skipBoostCountText.text = "x" + SaveSystem.Data.skipCount;
+
+        SetBoostButtonInteractable(hintBoostButton, SaveSystem.Data.hintCount > 0);
+        SetBoostButtonInteractable(undoBoostButton, SaveSystem.Data.undoCount > 0 && _moveHistory.Count > 0);
+        SetBoostButtonInteractable(skipBoostButton, SaveSystem.Data.skipCount > 0);
+    }
+
+    private void SetBoostButtonInteractable(Button b, bool on)
+    {
+        if (b == null) return;
+        b.interactable = on;
+        var img = b.GetComponent<Image>();
+        if (img != null)
+        {
+            Color c = img.color;
+            c.a = on ? 1f : 0.4f;
+            img.color = c;
+        }
+    }
+
+    private void ShakeBoostButton(Button b)
+    {
+        if (b == null) return;
+        var rt = b.GetComponent<RectTransform>();
+        if (rt == null) return;
+        rt.DOKill(false);
+        rt.DOShakeAnchorPos(0.3f, 12f, 12, 90f, false, true);
+        HapticManager.Trigger(HapticManager.HapticType.Heavy);
+    }
+
+    private void SpawnHintRing(Vector3 worldPos)
+    {
+        if (coinFlyHost == null) return;
+        for (int i = 0; i < 3; i++)
+        {
+            int idx = i;
+            var go = new GameObject("HintRing", typeof(RectTransform), typeof(Image));
+            go.transform.SetParent(coinFlyHost, false);
+            var rt = go.GetComponent<RectTransform>();
+            rt.anchorMin = new Vector2(0.5f, 0.5f);
+            rt.anchorMax = new Vector2(0.5f, 0.5f);
+            rt.pivot = new Vector2(0.5f, 0.5f);
+            rt.sizeDelta = new Vector2(180, 180);
+            rt.position = worldPos;
+            rt.localScale = Vector3.one * 0.5f;
+            var img = go.GetComponent<Image>();
+            img.color = new Color(0.2f, 0.95f, 1f, 0.55f);
+            img.raycastTarget = false;
+
+            float delay = idx * 0.18f;
+            Sequence s = DOTween.Sequence().SetUpdate(true);
+            s.AppendInterval(delay);
+            s.Append(rt.DOScale(2.4f, 0.7f).SetEase(Ease.OutQuad));
+            s.Join(img.DOFade(0f, 0.7f).SetEase(Ease.OutQuad));
+            var captured = go;
+            s.OnComplete(() => Destroy(captured));
+        }
     }
 
     private void AnimateIn()
