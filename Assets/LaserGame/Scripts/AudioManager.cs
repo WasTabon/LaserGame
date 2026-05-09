@@ -14,6 +14,11 @@ public class AudioManager : MonoBehaviour
     public AudioClip popupOpenClip;
     public AudioClip popupCloseClip;
     public AudioClip menuMusicClip;
+    public AudioClip gameMusicClip;
+    public AudioClip mirrorRotateClip;
+    public AudioClip batteryChargeClip;
+    public AudioClip energyStarClip;
+    public AudioClip winClip;
 
     private void Awake()
     {
@@ -77,6 +82,14 @@ public class AudioManager : MonoBehaviour
         musicSource.Play();
     }
 
+    public void PlayGameMusic()
+    {
+        if (gameMusicClip == null) return;
+        if (musicSource.clip == gameMusicClip && musicSource.isPlaying) return;
+        musicSource.clip = gameMusicClip;
+        musicSource.Play();
+    }
+
     public void PlaySFX(AudioClip clip, float volumeScale = 1f)
     {
         if (clip == null) return;
@@ -96,5 +109,25 @@ public class AudioManager : MonoBehaviour
     public void PlayPopupClose()
     {
         PlaySFX(popupCloseClip);
+    }
+
+    public void PlayMirrorRotate()
+    {
+        PlaySFX(mirrorRotateClip);
+    }
+
+    public void PlayBatteryCharge()
+    {
+        PlaySFX(batteryChargeClip);
+    }
+
+    public void PlayEnergyStarCollect()
+    {
+        PlaySFX(energyStarClip);
+    }
+
+    public void PlayWin()
+    {
+        PlaySFX(winClip);
     }
 }

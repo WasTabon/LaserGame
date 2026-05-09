@@ -47,6 +47,9 @@ public class GameController : MonoBehaviour
     public PausePopup pausePopup;
     public SettingsPopup gameSettingsPopup;
 
+    [Header("Tutorial")]
+    public TutorialHint tutorialHint;
+
     [Header("Coin Fly")]
     public RectTransform coinFlyHost;
 
@@ -151,6 +154,28 @@ public class GameController : MonoBehaviour
         RecalculateRay();
         if (rayRenderer != null) rayRenderer.RevealAnimation();
         if (emitter != null) emitter.PulseAppear();
+
+        if (AudioManager.Instance != null) AudioManager.Instance.PlayGameMusic();
+
+        TryShowTutorial();
+    }
+
+    private void TryShowTutorial()
+    {
+        if (tutorialHint == null) return;
+        if (GameSession.CurrentLevel != 1) { tutorialHint.gameObject.SetActive(false); return; }
+        if (PlayerPrefs.GetInt("tutorial_shown_v1", 0) == 1) { tutorialHint.gameObject.SetActive(false); return; }
+        if (_activeMirrors.Count == 0) { tutorialHint.gameObject.SetActive(false); return; }
+        StartCoroutine(ShowTutorialDelayed());
+    }
+
+    private System.Collections.IEnumerator ShowTutorialDelayed()
+    {
+        yield return new WaitForSecondsRealtime(0.7f);
+        if (_activeMirrors.Count > 0 && _activeMirrors[0] != null && _activeMirrors[0].rectTransform != null)
+        {
+            tutorialHint.ShowOn(_activeMirrors[0].rectTransform);
+        }
     }
 
     private void UpdateCoinsText(int value)
@@ -364,7 +389,11 @@ public class GameController : MonoBehaviour
             var b = _activeBatteries[i];
             if (b == null) continue;
             bool shouldBeCharged = visited.Contains(b.cell);
-            if (shouldBeCharged && !b.IsCharged) b.Charge();
+            if (shouldBeCharged && !b.IsCharged)
+            {
+                b.Charge();
+                if (AudioManager.Instance != null) AudioManager.Instance.PlayBatteryCharge();
+            }
             else if (!shouldBeCharged && b.IsCharged) b.Discharge();
         }
     }
@@ -386,6 +415,7 @@ public class GameController : MonoBehaviour
     {
         Vector3 worldStart = star.rectTransform.position;
         star.Collect();
+        if (AudioManager.Instance != null) AudioManager.Instance.PlayEnergyStarCollect();
 
         const int rewardPerStar = 5;
         int oldTotal = SaveSystem.Data.coins;
@@ -475,8 +505,16 @@ public class GameController : MonoBehaviour
     private IEnumerator WinSequenceRoutine()
     {
         HapticManager.Trigger(HapticManager.HapticType.Success);
+        if (AudioManager.Instance != null) AudioManager.Instance.PlayWin();
 
         if (grid != null) grid.PlayWinPulse(winFlashColor);
+        if (fieldRoot != null)
+        {
+            fieldRoot.DOKill(false);
+            fieldRoot.DOShakeAnchorPos(0.5f, 25f, 18, 90f, false, true);
+        }
+
+        SpawnConfetti();
 
         if (winFlashOverlay != null)
         {
@@ -511,6 +549,45 @@ public class GameController : MonoBehaviour
         }
     }
 
+    private void SpawnConfetti()
+    {
+        if (coinFlyHost == null || fieldRoot == null) return;
+        Vector3 center = fieldRoot.position;
+        var colors = new Color[]
+        {
+            new Color(0.2f, 0.95f, 1f, 1f),
+            new Color(1f, 0.25f, 0.85f, 1f),
+            new Color(1f, 0.85f, 0.25f, 1f),
+            new Color(0.5f, 1f, 0.5f, 1f)
+        };
+        for (int i = 0; i < 24; i++)
+        {
+            var go = new GameObject("Confetti", typeof(RectTransform), typeof(Image));
+            go.transform.SetParent(coinFlyHost, false);
+            var rt = go.GetComponent<RectTransform>();
+            rt.anchorMin = new Vector2(0.5f, 0.5f);
+            rt.anchorMax = new Vector2(0.5f, 0.5f);
+            rt.pivot = new Vector2(0.5f, 0.5f);
+            rt.sizeDelta = new Vector2(UnityEngine.Random.Range(14f, 26f), UnityEngine.Random.Range(14f, 26f));
+            rt.position = center;
+            var img = go.GetComponent<Image>();
+            img.color = colors[UnityEngine.Random.Range(0, colors.Length)];
+            img.raycastTarget = false;
+
+            float angle = UnityEngine.Random.Range(0f, Mathf.PI * 2f);
+            float distance = UnityEngine.Random.Range(280f, 620f);
+            Vector3 target = center + new Vector3(Mathf.Cos(angle) * distance, Mathf.Sin(angle) * distance, 0);
+
+            float dur = UnityEngine.Random.Range(0.9f, 1.6f);
+            Sequence s = DOTween.Sequence().SetUpdate(true);
+            s.Append(rt.DOMove(target, dur).SetEase(Ease.OutQuad));
+            s.Join(rt.DORotate(new Vector3(0, 0, UnityEngine.Random.Range(-720f, 720f)), dur, RotateMode.FastBeyond360));
+            s.Join(img.DOFade(0f, dur).SetEase(Ease.InQuad));
+            var captured = go;
+            s.OnComplete(() => Destroy(captured));
+        }
+    }
+
     private int CalculateStars()
     {
         int stars = 1;
@@ -540,6 +617,14 @@ public class GameController : MonoBehaviour
     {
         UpdateMoves(_moves + 1);
         RecalculateRay();
+        if (AudioManager.Instance != null) AudioManager.Instance.PlayMirrorRotate();
+
+        if (tutorialHint != null && tutorialHint.gameObject.activeSelf)
+        {
+            tutorialHint.Hide();
+            PlayerPrefs.SetInt("tutorial_shown_v1", 1);
+            PlayerPrefs.Save();
+        }
     }
 
     private void OnBackClicked()
