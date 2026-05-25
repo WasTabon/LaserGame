@@ -21,14 +21,7 @@ public class FieldPanController : MonoBehaviour, IDragHandler, IBeginDragHandler
         if (fieldRoot == null || viewport == null) return;
 
         Vector2 newPos = fieldRoot.anchoredPosition + eventData.delta;
-        Vector2 viewportSize = viewport.rect.size;
-        Vector2 maxOffset = new Vector2(
-            Mathf.Max(0f, (contentSize.x - viewportSize.x * viewportScale) * 0.5f),
-            Mathf.Max(0f, (contentSize.y - viewportSize.y * viewportScale) * 0.5f)
-        );
-
-        newPos.x = Mathf.Clamp(newPos.x, -maxOffset.x, maxOffset.x);
-        newPos.y = Mathf.Clamp(newPos.y, -maxOffset.y, maxOffset.y);
+        ClampToBounds(ref newPos);
         fieldRoot.anchoredPosition = newPos;
     }
 
@@ -43,5 +36,24 @@ public class FieldPanController : MonoBehaviour, IDragHandler, IBeginDragHandler
     public void Recenter()
     {
         if (fieldRoot != null) fieldRoot.anchoredPosition = Vector2.zero;
+    }
+
+    public void SnapToContentLocalPos(Vector2 localPos)
+    {
+        if (fieldRoot == null || viewport == null) return;
+        Vector2 newPos = -localPos;
+        ClampToBounds(ref newPos);
+        fieldRoot.anchoredPosition = newPos;
+    }
+
+    private void ClampToBounds(ref Vector2 pos)
+    {
+        Vector2 viewportSize = viewport.rect.size;
+        Vector2 maxOffset = new Vector2(
+            Mathf.Max(0f, (contentSize.x - viewportSize.x * viewportScale) * 0.5f),
+            Mathf.Max(0f, (contentSize.y - viewportSize.y * viewportScale) * 0.5f)
+        );
+        pos.x = Mathf.Clamp(pos.x, -maxOffset.x, maxOffset.x);
+        pos.y = Mathf.Clamp(pos.y, -maxOffset.y, maxOffset.y);
     }
 }

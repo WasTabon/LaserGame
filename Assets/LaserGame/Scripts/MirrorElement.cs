@@ -17,10 +17,9 @@ public class MirrorElement : MonoBehaviour
     public int rotationStep = 0;
 
     public Color rippleColor = new Color(1f, 0.25f, 0.85f, 0.55f);
+    public float rotationDuration = 0.3f;
 
     public event Action<MirrorElement> OnRotated;
-
-    private float _visualRotationDeg;
 
     private void OnEnable()
     {
@@ -34,7 +33,6 @@ public class MirrorElement : MonoBehaviour
     private void OnDisable()
     {
         if (button != null) button.onClick.RemoveListener(HandleClick);
-        if (diagonalLine != null) diagonalLine.rectTransform.DOKill();
         if (rectTransform != null) rectTransform.DOKill();
         if (ripple != null) ripple.rectTransform.DOKill();
     }
@@ -49,16 +47,23 @@ public class MirrorElement : MonoBehaviour
         {
             float diag = size * Mathf.Sqrt(2f) * 0.95f;
             diagonalLine.rectTransform.sizeDelta = new Vector2(diag, size * 0.13f);
+            diagonalLine.rectTransform.localEulerAngles = new Vector3(0, 0, 45f);
         }
         ApplyRotationImmediate();
     }
 
     public void ApplyRotationImmediate()
     {
-        _visualRotationDeg = rotationStep == 0 ? 45f : -45f;
+        float tileDeg = rotationStep == 0 ? 0f : -90f;
+        if (rectTransform != null)
+        {
+            rectTransform.DOKill();
+            rectTransform.localScale = Vector3.one;
+            rectTransform.localEulerAngles = new Vector3(0, 0, tileDeg);
+        }
         if (diagonalLine != null)
         {
-            diagonalLine.rectTransform.localEulerAngles = new Vector3(0, 0, _visualRotationDeg);
+            diagonalLine.rectTransform.localEulerAngles = new Vector3(0, 0, 45f);
         }
     }
 
@@ -70,57 +75,47 @@ public class MirrorElement : MonoBehaviour
 
     public void AnimateResetTo(int targetStep, float delay)
     {
-        int diff = ((targetStep - rotationStep) % 2 + 2) % 2;
+        int prevStep = rotationStep;
         rotationStep = targetStep;
+        float targetTileDeg = targetStep == 0 ? 0f : -90f;
 
-        if (diff == 0)
+        if (prevStep == targetStep)
         {
             if (rectTransform != null)
             {
                 rectTransform.DOKill(false);
                 rectTransform.localScale = Vector3.one;
-                DG.Tweening.DOTween.Sequence()
+                DOTween.Sequence()
                     .AppendInterval(delay)
                     .Append(rectTransform.DOPunchScale(Vector3.one * 0.08f, 0.25f, 6, 0.6f));
             }
             return;
         }
 
-        _visualRotationDeg += 90f;
-
-        if (diagonalLine != null)
-        {
-            diagonalLine.rectTransform.DOKill();
-            DG.Tweening.DOTween.Sequence()
-                .AppendInterval(delay)
-                .Append(diagonalLine.rectTransform.DOLocalRotate(new Vector3(0, 0, _visualRotationDeg), 0.3f, DG.Tweening.RotateMode.FastBeyond360).SetEase(DG.Tweening.Ease.OutBack));
-        }
-
         if (rectTransform != null)
         {
             rectTransform.DOKill(false);
             rectTransform.localScale = Vector3.one;
-            DG.Tweening.DOTween.Sequence()
+            DOTween.Sequence()
                 .AppendInterval(delay)
-                .Append(rectTransform.DOPunchScale(Vector3.one * 0.12f, 0.3f, 6, 0.5f));
+                .Append(rectTransform.DOLocalRotate(new Vector3(0, 0, targetTileDeg), rotationDuration, RotateMode.Fast).SetEase(Ease.OutBack));
+            DOTween.Sequence()
+                .AppendInterval(delay)
+                .Append(rectTransform.DOPunchScale(Vector3.one * 0.1f, rotationDuration, 6, 0.5f));
         }
     }
 
     private void HandleClick()
     {
         rotationStep = (rotationStep + 1) % 2;
-        _visualRotationDeg += 90f;
+        float targetTileDeg = rotationStep == 0 ? 0f : -90f;
 
-        if (diagonalLine != null)
-        {
-            diagonalLine.rectTransform.DOKill();
-            diagonalLine.rectTransform.DOLocalRotate(new Vector3(0, 0, _visualRotationDeg), 0.2f, RotateMode.FastBeyond360).SetEase(Ease.OutBack);
-        }
         if (rectTransform != null)
         {
             rectTransform.DOKill(false);
             rectTransform.localScale = Vector3.one;
-            rectTransform.DOPunchScale(Vector3.one * 0.12f, 0.3f, 6, 0.5f);
+            rectTransform.DOLocalRotate(new Vector3(0, 0, targetTileDeg), rotationDuration, RotateMode.Fast).SetEase(Ease.OutBack);
+            rectTransform.DOPunchScale(Vector3.one * 0.1f, rotationDuration, 6, 0.5f);
         }
         TriggerRipple();
         HapticManager.Trigger(HapticManager.HapticType.Light);

@@ -1842,7 +1842,19 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 378222646}
   m_OnClick:
     m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 534837785}
+        m_TargetAssemblyTypeName: EmitterAutoCenter, Assembly-CSharp
+        m_MethodName: Recenter
+        m_Mode: 0
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: 
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
 --- !u!224 &378222649
 RectTransform:
   m_ObjectHideFlags: 0
@@ -3054,6 +3066,7 @@ GameObject:
   m_Component:
   - component: {fileID: 534837784}
   - component: {fileID: 534837783}
+  - component: {fileID: 534837785}
   m_Layer: 0
   m_Name: LaserEmitter
   m_TagString: Untagged
@@ -3102,6 +3115,20 @@ RectTransform:
   m_AnchoredPosition: {x: -421.7143, y: 0}
   m_SizeDelta: {x: 109.645706, y: 109.645706}
   m_Pivot: {x: 0.5, y: 0.5}
+--- !u!114 &534837785
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 534837782}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3b724e2df1b91474e91eb474d11484a8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  emitter: {fileID: 534837783}
+  panController: {fileID: 1542691303}
 --- !u!1 &539661319
 GameObject:
   m_ObjectHideFlags: 0
